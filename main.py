@@ -135,7 +135,7 @@ def get_chatgpt(prompt, role):
 
     client = OpenAI()
     completion = client.chat.completions.create(
-        model="gpt-3.5-turbo",
+        model="gpt-4o",
         messages=[{"role": "system",
                    "content": role},
                   {"role": "user", "content": prompt}])
@@ -153,54 +153,53 @@ def main_prompting(search_words, examples, roles, data):
     all_data_df = pandas.DataFrame(columns=['Word',
                                             'Wiki_def',
                                             'DWDS_def',
-                                            'Zero_helpful',
-                                            'Zero_wiki_helpful',
-                                            'Zero_dwds_helpful',
-                                            'Zero_both_helpful',
-                                            'Zero_ling',
-                                            'Zero_wiki_ling',
-                                            'Zero_dwds_ling',
-                                            'Zero_both_ling',
+                                            'Zero',
+                                            'Zero_dwds',
+                                            'Zero_wiki',
+                                            'Zero_both',
                                             'Few',
-                                            'Few_wiki',
                                             'Few_dwds',
+                                            'Few_wiki',
                                             'Few_both',
                                             'CoT',
-                                            'CoT_wiki',
                                             'CoT_dwds',
+                                            'CoT_wiki',
                                             'CoT_both',
-                                            'RAG_wiki',
                                             'RAG_dwds',
+                                            'RAG_wiki',
                                             'RAG_both'])
 
-    print('Retrieving ChatGPT responses ...\n')
+    print('\nRetrieving ChatGPT responses ...')
     with alive_bar(len(search_words), force_tty=True) as bar:
 
         for word in search_words:
             _temp_word_data = [word, data[word]['wiki_def'], data[word]['dwds_def']]
 
-            # zero-shot prompting +
-            for role in roles:
-                prompt = f'Definiere das folgende Wort: {word}.'
-                _temp_word_data.append(get_chatgpt(prompt, role))
+            # zero-shot prompting
+            prompt = f'Definiere das folgende Wort: {word}.'
+            _temp_word_data.append(get_chatgpt(prompt, roles[0]))
 
+                # zero-shot prompting + DWDS Belege
+            prompt = f'Definiere das folgende Wort: {word}. Nutze die folgenden Belege als Hilfe. ' \
+                     f'Belege = {data[word]["dwds_con"]}'
+            _temp_word_data.append(get_chatgpt(prompt, roles[0]))
+
+            if data[word]['wiki_full'] != 'no entry':
                 # zero-shot prompting + wikipedia article
                 prompt = f'Definiere das folgende Wort: {word}. Nutze den folgenden Text als Hilfe. ' \
                          f'Text = {data[word]["wiki_full"]}'
-                _temp_word_data.append(get_chatgpt(prompt, role))
-
-                # zero-shot prompting + DWDS Belege
-                prompt = f'Definiere das folgende Wort: {word}. Nutze die folgenden Belege als Hilfe. ' \
-                         f'Belege = {data[word]["dwds_con"]}'
-                _temp_word_data.append(get_chatgpt(prompt, role))
+                _temp_word_data.append(get_chatgpt(prompt, roles[0]))
 
                 # zero-shot prompting + beide
                 prompt = f'Definiere das folgende Wort: {word}. Nutze den folgenden Text und ' \
                          f'die folgenden Belege als Hilfe. ' \
                          f'Text = {data[word]["wiki_full"]}, Belege = {data[word]["dwds_con"]}'
-                _temp_word_data.append(get_chatgpt(prompt, role))
+                _temp_word_data.append(get_chatgpt(prompt, roles[0]))
+            else:
+                _temp_word_data.append('Kein Wiki-Eintrag')
+                _temp_word_data.append('Kein Wiki-Eintrag')
 
-            # few-shot-prompting +
+            # few-shot-prompting
             for example in examples:
                 _temp_role = _temp_role + \
                            f'Die Definition von {example} ist {examples[example]}'
@@ -208,86 +207,91 @@ def main_prompting(search_words, examples, roles, data):
             prompt = f'Die Defintion von {word} ist ...'
             _temp_word_data.append(get_chatgpt(prompt, role))
 
-                # few-shot-prompting + wikipedia article
-            prompt = f'Die Defintion von {word} ist ... Nutze den folgenden Text als Hilfe. ' \
-                     f'Text = {data[word]["wiki_full"]}'
-            _temp_word_data.append(get_chatgpt(prompt, role))
-
                 # few-shot-prompting + DWDS Belege
             prompt = f'Die Defintion von {word} ist ... Nutze die folgenden Belege als Hilfe. ' \
                      f'Belege = {data[word]["dwds_con"]}'
             _temp_word_data.append(get_chatgpt(prompt, role))
 
+            if data[word]['wiki_full'] != 'no entry':
+                # few-shot-prompting + wikipedia article
+                prompt = f'Die Defintion von {word} ist ... Nutze den folgenden Text als Hilfe. ' \
+                         f'Text = {data[word]["wiki_full"]}'
+                _temp_word_data.append(get_chatgpt(prompt, role))
+
                 # few-shot-prompting + beide
-            prompt = f'Die Defintion von {word} ist ... Nutze den folgenden Text und ' \
-                     f'die folgenden Belege als Hilfe. ' \
-                     f'Text = {data[word]["wiki_full"]}, Belege = {data[word]["dwds_con"]}'
-            _temp_word_data.append(get_chatgpt(prompt, role))
+                prompt = f'Die Defintion von {word} ist ... Nutze den folgenden Text und ' \
+                         f'die folgenden Belege als Hilfe. ' \
+                         f'Text = {data[word]["wiki_full"]}, Belege = {data[word]["dwds_con"]}'
+                _temp_word_data.append(get_chatgpt(prompt, role))
+            else:
+                _temp_word_data.append('Kein Wiki-Eintrag')
+                _temp_word_data.append('Kein Wiki-Eintrag')
 
-            # chain of thought +
-            for example in examples:
-                _temp_role = _temp_role + \
-                           f'Frage: Was ist die Definition von {example}?' \
-                           f'Antwort: {examples[example]}'
-            role = _temp_role
-            prompt = f'Was ist die Definition von {word}?'
-            _temp_word_data.append(get_chatgpt(prompt, role))
-
-                # chain of thought + wikipedia article
-            prompt = f'Was ist die Definition von {word}? Nutze den folgenden Text als Hilfe. ' \
-                     f'Text = {data[word]["wiki_full"]}'
+            # chain of thought
+            prompt = f'Was ist die Definition von {word}? Erklär deine Gedankenschritte.'
             _temp_word_data.append(get_chatgpt(prompt, role))
 
                 # chain of thought + DWDS Belege
-            prompt = f'Was ist die Definition von {word}? Nutze die folgenden Belege als Hilfe. ' \
+            prompt = f'Was ist die Definition von {word}? Nutze die folgenden Belege als Hilfe und ' \
+                     f'erklär deine Gedankenschritte. ' \
                      f'Belege = {data[word]["dwds_con"]}'
             _temp_word_data.append(get_chatgpt(prompt, role))
 
+            if data[word]['wiki_full'] != 'no entry':
+                # chain of thought + wikipedia article
+                prompt = f'Was ist die Definition von {word}? Nutze den folgenden Text als Hilfe und ' \
+                         f'erklär deine Gedankenschritte. ' \
+                         f'Text = {data[word]["wiki_full"]}'
+                _temp_word_data.append(get_chatgpt(prompt, role))
+
                 # chain of thought + beide
-            prompt = f'Was ist die Definition von {word}? Nutze den folgenden Text und ' \
-                     f'die folgenden Belege als Hilfe. ' \
-                     f'Text = {data[word]["wiki_full"]}, Belege = {data[word]["dwds_con"]}'
-            _temp_word_data.append(get_chatgpt(prompt, role))
+                prompt = f'Was ist die Definition von {word}? Nutze den folgenden Text und ' \
+                         f'die folgenden Belege als Hilfe und erklär deine Gedankenschritte. ' \
+                         f'Text = {data[word]["wiki_full"]}, Belege = {data[word]["dwds_con"]}'
+                _temp_word_data.append(get_chatgpt(prompt, role))
+            else:
+                _temp_word_data.append('Kein Wiki-Eintrag')
+                _temp_word_data.append('Kein Wiki-Eintrag')
 
             # RAG
-                # wikipedia article
-            role = f'Lies den folgenden Text und definiere auf Basis des Textes das Wort {word}.'
-            prompt = f'Text = {data[word]["wiki_full"]}'
-            _temp_word_data.append(get_chatgpt(prompt, role))
-
                 # dwds Belege
             role = f'Lies die folgenden Belege und definiere auf Basis der Belege danach das Wort {word}.'
             prompt = f'Text = Belege = {data[word]["dwds_con"]}'
             _temp_word_data.append(get_chatgpt(prompt, role))
 
+            if data[word]['wiki_full'] != 'no entry':
+                # wikipedia article
+                role = f'Lies den folgenden Text und definiere auf Basis des Textes das Wort {word}.'
+                prompt = f'Text = {data[word]["wiki_full"]}'
+                _temp_word_data.append(get_chatgpt(prompt, role))
+
                 # beides
-            role = f'Lies die folgenden Text und die Belege und definiere auf Basis des Textes und ' \
-                   f'der Belege danach das Wort {word}.'
-            prompt = f'Text = {data[word]["wiki_full"]}, Belege = {data[word]["dwds_con"]}'
-            _temp_word_data.append(get_chatgpt(prompt, role))
+                role = f'Lies die folgenden Text und die Belege und definiere auf Basis des Textes und ' \
+                       f'der Belege danach das Wort {word}.'
+                prompt = f'Text = {data[word]["wiki_full"]}, Belege = {data[word]["dwds_con"]}'
+                _temp_word_data.append(get_chatgpt(prompt, role))
+            else:
+                _temp_word_data.append('Kein Wiki-Eintrag')
+                _temp_word_data.append('Kein Wiki-Eintrag')
 
             _temp_word_data_df = pandas.DataFrame([_temp_word_data],
                                                   columns=['Word',
                                                            'Wiki_def',
                                                            'DWDS_def',
-                                                           'Zero_helpful',
-                                                           'Zero_wiki_helpful',
-                                                           'Zero_dwds_helpful',
-                                                           'Zero_both_helpful',
-                                                           'Zero_ling',
-                                                           'Zero_wiki_ling',
-                                                           'Zero_dwds_ling',
-                                                           'Zero_both_ling',
+                                                           'Zero',
+                                                           'Zero_dwds',
+                                                           'Zero_wiki',
+                                                           'Zero_both',
                                                            'Few',
-                                                           'Few_wiki',
                                                            'Few_dwds',
+                                                           'Few_wiki',
                                                            'Few_both',
                                                            'CoT',
-                                                           'CoT_wiki',
                                                            'CoT_dwds',
+                                                           'CoT_wiki',
                                                            'CoT_both',
-                                                           'RAG_wiki',
                                                            'RAG_dwds',
+                                                           'RAG_wiki',
                                                            'RAG_both'])
             all_data_df = pandas.concat([all_data_df, _temp_word_data_df], ignore_index=True)
 
@@ -297,8 +301,14 @@ def main_prompting(search_words, examples, roles, data):
         print('Data can be found in data.csv')
 
 
+def secondary_prompting(search_words, examples, roles, data):
+    """Retrieves Chat GPT reaction to different prompting options."""
+
+    pass
+
+
 if __name__ == '__main__':
-    search_words = ['Ruhender Ball', 'Tikitaka', 'Chancentod', 'Mausohren', 'Gefrett']
+    search_words = ['Ruhender Ball', 'Tikitaka', 'Chancentod', 'Mausohr', 'Gefrett']
     examples = {'Trauma': 'Ereignis, durch das ein Organismus (durch mechanische Gewalteinwirkung, '                    # Wort des Tages 13.07.
                           'Verätzung, Vergiftung, Verbrennung o.Ä.) geschädigt oder verletzt '
                           'wird; die Schädigung oder Verletzung selbst; schwere psychische Erschütterung',
@@ -307,7 +317,8 @@ if __name__ == '__main__':
                                  'Verantwortung für die Produktion eines Films trägt, die Dreharbeiten usw. '
                                  'organisiert und inhaltlich Einfluss nimmt'}                                           # Wort des Tages 07.07.
     roles = ['Du bist ein hilfreicher Assistent.',
-             'Du bist ein linguist und arbeitest für das DWDS. Deine Aufgabe ist es, Wörter zu definieren.']
+             'Du bist ein linguist und arbeitest an einem lexikalischen Wörterbuch. '
+             'Deine Aufgabe ist es, Wörter zu definieren. Die Definitionen dürfen nicht länger als 30 Wörter sein.']
     data = get_word_content(search_words)
 
     main_prompting(search_words, examples, roles, data)
