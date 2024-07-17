@@ -228,47 +228,47 @@ def main_prompting(search_words, examples, roles, data):
                 _temp_word_data.append('Kein Wiki-Eintrag')
 
             # chain of thought
-            prompt = f'Was ist die Definition von {word}? Erklär deine Gedankenschritte.'
-            _temp_word_data.append(get_chatgpt(prompt, role))
+            prompt = f'Definiere das folgende Wort: {word}. Erklär deine Gedankenschritte.'
+            _temp_word_data.append(get_chatgpt(prompt, roles[0]))
 
                 # chain of thought + DWDS Belege
-            prompt = f'Was ist die Definition von {word}? Nutze die folgenden Belege als Hilfe und ' \
+            prompt = f'Definiere das folgende Wort: {word}. Nutze die folgenden Belege als Hilfe und ' \
                      f'erklär deine Gedankenschritte. ' \
                      f'Belege = {data[word]["dwds_con"]}'
-            _temp_word_data.append(get_chatgpt(prompt, role))
+            _temp_word_data.append(get_chatgpt(prompt, roles[0]))
 
             if data[word]['wiki_full'] != 'no entry':
                 # chain of thought + wikipedia article
-                prompt = f'Was ist die Definition von {word}? Nutze den folgenden Text als Hilfe und ' \
+                prompt = f'Definiere das folgende Wort: {word}. Nutze den folgenden Text als Hilfe und ' \
                          f'erklär deine Gedankenschritte. ' \
                          f'Text = {data[word]["wiki_full"]}'
-                _temp_word_data.append(get_chatgpt(prompt, role))
+                _temp_word_data.append(get_chatgpt(prompt, roles[0]))
 
                 # chain of thought + beide
-                prompt = f'Was ist die Definition von {word}? Nutze den folgenden Text und ' \
+                prompt = f'Definiere das folgende Wort: {word}. Nutze den folgenden Text und ' \
                          f'die folgenden Belege als Hilfe und erklär deine Gedankenschritte. ' \
                          f'Text = {data[word]["wiki_full"]}, Belege = {data[word]["dwds_con"]}'
-                _temp_word_data.append(get_chatgpt(prompt, role))
+                _temp_word_data.append(get_chatgpt(prompt, roles[0]))
             else:
                 _temp_word_data.append('Kein Wiki-Eintrag')
                 _temp_word_data.append('Kein Wiki-Eintrag')
 
             # RAG
                 # dwds Belege
-            role = f'Lies die folgenden Belege und definiere auf Basis der Belege danach das Wort {word}.'
-            prompt = f'Text = Belege = {data[word]["dwds_con"]}'
+            role = f'Lies die folgenden Belege: {data[word]["dwds_con"]}'
+            prompt = f'Definiere auf Basis der Belege das folgende Wort: {word}'
             _temp_word_data.append(get_chatgpt(prompt, role))
 
             if data[word]['wiki_full'] != 'no entry':
                 # wikipedia article
-                role = f'Lies den folgenden Text und definiere auf Basis des Textes das Wort {word}.'
-                prompt = f'Text = {data[word]["wiki_full"]}'
+                role = f'Lies den folgenden Text: Text = {data[word]["wiki_full"]}.'
+                prompt = f'Definiere auf Basis des Textes das folgende Wort: {word}'
                 _temp_word_data.append(get_chatgpt(prompt, role))
 
                 # beides
-                role = f'Lies die folgenden Text und die Belege und definiere auf Basis des Textes und ' \
-                       f'der Belege danach das Wort {word}.'
-                prompt = f'Text = {data[word]["wiki_full"]}, Belege = {data[word]["dwds_con"]}'
+                role = f'Lies die folgenden Text: {data[word]["wiki_full"]}, ' \
+                       f'und die folgenden Belege: {data[word]["dwds_con"]}.'
+                prompt = f'Definiere auf Basis des Textes und der Belege das folgende Wort: {word}'
                 _temp_word_data.append(get_chatgpt(prompt, role))
             else:
                 _temp_word_data.append('Kein Wiki-Eintrag')
