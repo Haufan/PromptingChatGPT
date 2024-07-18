@@ -149,7 +149,7 @@ def get_chatgpt(prompt, role):
 def main_prompting(search_words, examples, roles, data):
     """Retrieves Chat GPT reaction to different prompting options."""
 
-    _temp_role = ''
+    _temp_prompt = ''
     all_data_df = pandas.DataFrame(columns=['Word',
                                             'Wiki_def',
                                             'DWDS_def',
@@ -201,28 +201,28 @@ def main_prompting(search_words, examples, roles, data):
 
             # few-shot-prompting
             for example in examples:
-                _temp_role = _temp_role + \
-                           f'Die Definition von {example} ist {examples[example]}'
-            role = _temp_role
-            prompt = f'Die Defintion von {word} ist ...'
-            _temp_word_data.append(get_chatgpt(prompt, role))
+                _temp_prompt = _temp_prompt + \
+                           f'Die Definition von {example} ist {examples[example]}. '
+
+            prompt = _temp_prompt + f'Die Defintion von {word} ist ...'
+            _temp_word_data.append(get_chatgpt(prompt, roles[0]))
 
                 # few-shot-prompting + DWDS Belege
-            prompt = f'Die Defintion von {word} ist ... Nutze die folgenden Belege als Hilfe. ' \
-                     f'Belege = {data[word]["dwds_con"]}'
-            _temp_word_data.append(get_chatgpt(prompt, role))
+            prompt = _temp_prompt + f'Die Defintion von {word} ist ... ' \
+                                    f'Nutze die folgenden Belege als Hilfe. Belege = {data[word]["dwds_con"]}'
+            _temp_word_data.append(get_chatgpt(prompt, roles[0]))
 
             if data[word]['wiki_full'] != 'no entry':
                 # few-shot-prompting + wikipedia article
-                prompt = f'Die Defintion von {word} ist ... Nutze den folgenden Text als Hilfe. ' \
-                         f'Text = {data[word]["wiki_full"]}'
-                _temp_word_data.append(get_chatgpt(prompt, role))
+                prompt = _temp_prompt + f'Die Defintion von {word} ist ... ' \
+                                        f'Nutze den folgenden Text als Hilfe. Text = {data[word]["wiki_full"]}'
+                _temp_word_data.append(get_chatgpt(prompt, roles[0]))
 
                 # few-shot-prompting + beide
-                prompt = f'Die Defintion von {word} ist ... Nutze den folgenden Text und ' \
-                         f'die folgenden Belege als Hilfe. ' \
-                         f'Text = {data[word]["wiki_full"]}, Belege = {data[word]["dwds_con"]}'
-                _temp_word_data.append(get_chatgpt(prompt, role))
+                prompt = _temp_prompt + f'Die Defintion von {word} ist ... ' \
+                                        f'Nutze den folgenden Text, und den folgenden Text und die folgenden Belege als Hilfe. ' \
+                                        f'Text = {data[word]["wiki_full"]}, Belege = {data[word]["dwds_con"]}'
+                _temp_word_data.append(get_chatgpt(prompt, roles[0]))
             else:
                 _temp_word_data.append('Kein Wiki-Eintrag')
                 _temp_word_data.append('Kein Wiki-Eintrag')
@@ -261,13 +261,13 @@ def main_prompting(search_words, examples, roles, data):
 
             if data[word]['wiki_full'] != 'no entry':
                 # wikipedia article
-                role = f'Lies den folgenden Text: Text = {data[word]["wiki_full"]}.'
+                role = f'Lies den folgenden Text: {data[word]["wiki_full"]}.'
                 prompt = f'Definiere auf Basis des Textes das folgende Wort: {word}'
                 _temp_word_data.append(get_chatgpt(prompt, role))
 
                 # beides
-                role = f'Lies die folgenden Text: {data[word]["wiki_full"]}, ' \
-                       f'und die folgenden Belege: {data[word]["dwds_con"]}.'
+                role = f'Lies die folgenden Text: {data[word]["wiki_full"]}. ' \
+                       f'Lies die folgenden Belege: {data[word]["dwds_con"]}.'
                 prompt = f'Definiere auf Basis des Textes und der Belege das folgende Wort: {word}'
                 _temp_word_data.append(get_chatgpt(prompt, role))
             else:
